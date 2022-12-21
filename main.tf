@@ -7,12 +7,12 @@ terraform {
   }
 }
 
-# Configure provider
+# Provider Configuration
 provider "aws" {
   region  = "us-east-1"
 }
 
-# Create VPC
+# VPC
 resource "aws_vpc" "vpc" {
   cidr_block       = "10.0.0.0/16"
   instance_tenancy = "default"
@@ -22,7 +22,7 @@ resource "aws_vpc" "vpc" {
   }
 }
 
-# Create internet gateway
+# Internet Gateway
 resource "aws_internet_gateway" "ig" {
   vpc_id = aws_vpc.vpc.id
   
@@ -31,7 +31,7 @@ resource "aws_internet_gateway" "ig" {
   }
 }
 
-# Create 2 public subnets
+# 2 Public Subnets
 resource "aws_subnet" "public_1" {
   vpc_id     = aws_vpc.vpc.id
   cidr_block = "10.0.1.0/24"
@@ -54,7 +54,7 @@ resource "aws_subnet" "public_2" {
   }
 }
 
-# Create 2 private subnets
+# 2 Private Subnets
 resource "aws_subnet" "private_1" {
   vpc_id     = aws_vpc.vpc.id
   cidr_block = "10.0.3.0/24"
@@ -77,7 +77,7 @@ resource "aws_subnet" "private_2" {
   }
 }
 
-# Create route table to internet gateway
+# Route Table to Internet Gateway
 resource "aws_route_table" "project_rt" {
   vpc_id = aws_vpc.vpc.id
 
@@ -90,7 +90,7 @@ resource "aws_route_table" "project_rt" {
   }
 }
 
-# Associate public subnets with route table
+# Public Subnets Association with Route Table
 resource "aws_route_table_association" "public_route_1" {
   subnet_id      = aws_subnet.public_1.id
   route_table_id = aws_route_table.project_rt.id
@@ -101,7 +101,7 @@ resource "aws_route_table_association" "public_route_2" {
   route_table_id = aws_route_table.project_rt.id
 }
 
-# Create security groups
+# Security Groups - Public and Private
 resource "aws_security_group" "public_sg" {
   name        = "public-sg"
   description = "Allow web and ssh traffic"
@@ -176,7 +176,7 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-# Create ALB
+# ALB
 resource "aws_lb" "project_alb" {
   name               = "alb"
   internal           = false
@@ -185,7 +185,7 @@ resource "aws_lb" "project_alb" {
   subnets            = [aws_subnet.public_1.id, aws_subnet.public_2.id]
 }
 
-# Create ALB target group
+# ALB Target group
 resource "aws_lb_target_group" "project_tg" {
   name     = "project-tg"
   port     = 80
@@ -195,7 +195,7 @@ resource "aws_lb_target_group" "project_tg" {
   depends_on = [aws_vpc.vpc]
 }
 
-# Create target attachments
+# Target Attachments
 resource "aws_lb_target_group_attachment" "tg_attach1" {
   target_group_arn = aws_lb_target_group.project_tg.arn
   target_id        = aws_instance.web1.id
@@ -212,7 +212,7 @@ resource "aws_lb_target_group_attachment" "tg_attach2" {
   depends_on = [aws_instance.web2]
 }
 
-# Create listener
+# Listener
 resource "aws_lb_listener" "listener_lb" {
   load_balancer_arn = aws_lb.project_alb.arn
   port              = "80"
@@ -224,7 +224,7 @@ resource "aws_lb_listener" "listener_lb" {
   }
 }
 
-# Create ec2 instances
+# EC2 Instances
 resource "aws_instance" "web1" {
   ami           = "ami-0cff7528ff583bf9a"
   instance_type = "t2.micro"
@@ -269,13 +269,13 @@ resource "aws_instance" "web2" {
 }
 
 
-# Database subnet group
+# DB Subnet Group
 resource "aws_db_subnet_group" "db_subnet"  {
     name       = "db-subnet"
     subnet_ids = [aws_subnet.private_1.id, aws_subnet.private_2.id]
 }
 
-# Create database instance
+# DB Instance
 resource "aws_db_instance" "project_db" {
   allocated_storage    = 5
   engine               = "mysql"
@@ -291,18 +291,19 @@ resource "aws_db_instance" "project_db" {
   skip_final_snapshot  = true
 }
 
+
 # Outputs
-# Ec2 instance public ipv4 address
+# EC2 Public IPv4 Address
 output "ec2_public_ip" {
   value = aws_instance.web1.public_ip
 }
 
-# Db instance address
+# Db Instance Address
 output "db_instance_address" {
     value = aws_db_instance.project_db.address
 }
 
-# Getting the DNS of load balancer
+# DNS of Load Balancer
 output "lb_dns_name" {
   description = "The DNS name of the load balancer"
   value       = "${aws_lb.project_alb.dns_name}"
